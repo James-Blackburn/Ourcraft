@@ -4,8 +4,10 @@
 #include "Utilities.hpp"
 #include "NoiseGenerator.hpp"
 #include "Constants.hpp"
+#include "Player.hpp"
 
 #include <thread>
+#include <iostream>
 
 
 PlayingState::PlayingState(Game* game_)
@@ -22,11 +24,18 @@ PlayingState::~PlayingState()
         delete chunk;
     }
     delete fpsText;
+    delete player;
 }
 
 void PlayingState::loadResources()
 {
     fpsText = new Text(game->miscFont, "", 24, sf::Color::White, sf::Vector2f(WINDOW_X-100, 0));
+    player = new Player;
+    player->x = camera_x;
+    player->y = camera_y;
+
+    playerTexture.loadFromFile("img/player.png");
+    player->setTexture(playerTexture);
 
     dirtTexture.loadFromFile("img/dirt.png");
     dirtSprite.setTexture(dirtTexture);
@@ -36,6 +45,9 @@ void PlayingState::loadResources()
 
     stoneTexture.loadFromFile("img/stone.png");
     stoneSprite.setTexture(stoneTexture);
+
+    emptyTexture.loadFromFile("img/empty.png");
+    emptySprite.setTexture(emptyTexture);
 }
 
 void PlayingState::loadMap()
@@ -55,42 +67,6 @@ void PlayingState::loadMap()
         game->window.display();
     }
     t1.join();
-}
-
-void PlayingState::update()
-{
-    sf::Event event;
-    while (game->window.pollEvent(event))
-    {
-        if (event.type == sf::Event::Closed)
-            game->window.close();
-        else if (event.type == sf::Event::KeyPressed)
-        {
-            if (event.key.code == sf::Keyboard::Right || event.key.code == sf::Keyboard::D)
-                moveCameraX = SCROLL_SPEED;
-            else if (event.key.code == sf::Keyboard::Left || event.key.code == sf::Keyboard::A)
-                moveCameraX = -SCROLL_SPEED;
-            else if (event.key.code == sf::Keyboard::Down || event.key.code == sf::Keyboard::S)
-                moveCameraY = SCROLL_SPEED;
-            else if (event.key.code == sf::Keyboard::Up || event.key.code == sf::Keyboard::W)
-                moveCameraY = -SCROLL_SPEED;
-        } else if (event.type == sf::Event::KeyReleased)
-        {
-            if (event.key.code == sf::Keyboard::Right || event.key.code == sf::Keyboard::D)
-                moveCameraX = 0;
-            else if (event.key.code == sf::Keyboard::Left || event.key.code == sf::Keyboard::A)
-                moveCameraX = 0;
-            else if (event.key.code == sf::Keyboard::Down || event.key.code == sf::Keyboard::S)
-                moveCameraY = 0;
-            else if (event.key.code == sf::Keyboard::Up || event.key.code == sf::Keyboard::W)
-                moveCameraY = 0;
-        }
-    }
-
-    if ((camera_x + moveCameraX) < MAP_X - WINDOW_X && (camera_x + moveCameraX) > 0)
-        camera_x += moveCameraX;
-    if ((camera_y + moveCameraY) < MAP_Y - WINDOW_Y  && (camera_y + moveCameraY) > 0)
-        camera_y += moveCameraY;
 }
 
 void PlayingState::generateMap()
@@ -138,24 +114,146 @@ void PlayingState::generateMap()
     generated = true;
 }
 
+void PlayingState::update()
+{
+    sf::Event event;
+    while (game->window.pollEvent(event))
+    {
+        if (event.type == sf::Event::Closed)
+            game->window.close();
+        else if (event.type == sf::Event::KeyPressed)
+        {
+            if (event.key.code == sf::Keyboard::Space)
+                player->moveY = 8;
+            if (event.key.code == sf::Keyboard::Right || event.key.code == sf::Keyboard::D)
+                player->moveX = MOVE_SPEED;
+            else if (event.key.code == sf::Keyboard::Left || event.key.code == sf::Keyboard::A)
+                player->moveX = -MOVE_SPEED;
+        } else if (event.type == sf::Event::KeyReleased)
+        {
+            if (event.key.code == sf::Keyboard::Right || event.key.code == sf::Keyboard::D)
+                player->moveX = 0;
+            else if (event.key.code == sf::Keyboard::Left || event.key.code == sf::Keyboard::A)
+                player->moveX = 0;
+        }
+    }
+
+    // Move player according to gravity
+    int playerFutureY;
+
+    if (player->moveY)
+    {
+        player->y += -player->moveY;
+        player->moveY--;
+        playerFutureY = player->y;
+    }
+    else
+        playerFutureY = player->y + GRAVITY;
+
+    for (Chunk* chunk : chunks)
+    {
+        if (chunk->rect.contains(player->x, playerFutureY))
+        {
+            Tile* closestTile = nullptr;
+            for (Tile* tile : chunk->tiles)
+            {
+                if (tile->x <= player->x + PLAYER_WIDTH/2 && tile->x + BLOCK_SIZE >= player->x + PLAYER_WIDTH/2
+                    && tile->y >= player->y + PLAYER_HEIGHT && tile->y <= playerFutureY + PLAYER_HEIGHT)
+                {
+                    if (closestTile == nullptr)
+                        closestTile = tile;
+                    else if (tile->y < closestTile->y)
+                        closestTile = tile;
+                }
+            }
+            if (closestTile != nullptr)
+                playerFutureY = closestTile->y - PLAYER_HEIGHT;
+        }
+    }
+
+    // Move player right
+    int playerFutureX = player->x + player->moveX;
+    if (playerFutureX > player->x)
+    {
+        for (Chunk* chunk : chunks)
+        {
+            if (chunk->rect.contains(playerFutureX, player->y))
+            {
+                Tile* closestTile = nullptr;
+                for (Tile* tile : chunk->tiles)
+                {
+                    if (tile->y < player->y + PLAYER_HEIGHT && tile->y > player->y
+                        && tile->x >= player->x + PLAYER_WIDTH && tile->x <= playerFutureX + PLAYER_WIDTH)
+                    {
+                        if (closestTile == nullptr)
+                            closestTile = tile;
+                        else if (tile->x < closestTile->x)
+                            closestTile = tile;
+                    }
+                }
+                if (closestTile != nullptr)
+                    playerFutureX = closestTile->x - PLAYER_WIDTH;
+            }
+        }
+    } else
+    { // Move player left
+        for (Chunk* chunk : chunks)
+        {
+            if (chunk->rect.contains(playerFutureX, player->y))
+            {
+                Tile* closestTile = nullptr;
+                for (Tile* tile : chunk->tiles)
+                {
+                    if (tile->y < player->y + PLAYER_HEIGHT && tile->y > player->y
+                        && tile->x + BLOCK_SIZE <= player->x && tile->x >= playerFutureX - BLOCK_SIZE)
+                    {
+                        if (closestTile == nullptr)
+                            closestTile = tile;
+                        else if (tile->x > closestTile->x)
+                            closestTile = tile;
+                    }
+                }
+                if (closestTile != nullptr)
+                    playerFutureX = closestTile->x + BLOCK_SIZE;
+            }
+        }
+    }
+
+    player->y = playerFutureY;
+    player->x = playerFutureX;
+
+    // Move camera
+    camera_x = player->x - WINDOW_X / 2;
+    camera_y = player->y - WINDOW_Y / 2;
+    /*
+    if ((camera_x + moveCameraX) < MAP_X - WINDOW_X && (camera_x + moveCameraX) > 0)
+        camera_x += moveCameraX;
+    if ((camera_y + moveCameraY) < MAP_Y - WINDOW_Y  && (camera_y + moveCameraY) > 0)
+        camera_y += moveCameraY;
+    */
+}
+
 void PlayingState::draw()
 {
     game->window.clear(sf::Color(135,206,250));
     sf::IntRect shiftedWindowRect(0 + camera_x, 0 + camera_y, WINDOW_X, WINDOW_Y);
-    int sf = 64;
-    int shadowDepth = 2;
+
     for (Chunk* chunk : chunks)
     {
         if (shiftedWindowRect.intersects(chunk->rect))
         {
             for (Tile* tile : chunk->tiles)
             {
-                int brightness = 255;
-                if (tile->depth > shadowDepth)
+                int brightness = MAX_TILE_BRIGHTNESS;
+                if (tile->depth > SHADOW_DEPTH)
                 {
-                    brightness = 255 - ((tile->depth-shadowDepth)*sf);
-                    if (brightness < 0) brightness = 0;
-                    else if (brightness > 255) brightness = 255;
+                    brightness = MAX_TILE_BRIGHTNESS - ((tile->depth-SHADOW_DEPTH)*SHADOW_SCALING_FACTOR);
+                    if (brightness < 0)
+                    {
+                        emptySprite.setPosition(tile->x - camera_x, tile->y - camera_y);
+                        game->window.draw(emptySprite);
+                        continue;
+                    }
                 }
 
                 switch(tile->type)
@@ -180,6 +278,11 @@ void PlayingState::draw()
             }
         }
     }
+
+    player->setPosition(player->x - camera_x, player->y - camera_y);
+    game->window.draw(*player);
+
+    // Calculate FPS
     float currentTime = clock.restart().asSeconds();
     int fps = 1 / currentTime;
     fpsText->setText("FPS: " + std::to_string(fps));

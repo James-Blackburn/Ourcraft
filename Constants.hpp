@@ -10,6 +10,12 @@ const int BLOCK_SIZE = 16;
 const int MAP_BLOCK_WIDTH = MAP_X / BLOCK_SIZE;
 const int MAP_BLOCK_HEIGHT = MAP_Y / BLOCK_SIZE;
 const int SEED = 1;
-const int SCROLL_SPEED = 16;
+const int MOVE_SPEED = 4;
+const int GRAVITY = 8;
+const int SHADOW_SCALING_FACTOR = 64;
+const int SHADOW_DEPTH = 2;
+const int MAX_TILE_BRIGHTNESS = 255;
+const int PLAYER_WIDTH = 8;
+const int PLAYER_HEIGHT = 32;
 
 #endif // CONSTANTS_HPP_INCLUDED

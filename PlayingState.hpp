@@ -10,6 +10,7 @@
 #include "Constants.hpp"
 
 class Text;
+class Player;
 
 class PlayingState : public GameState
 {
@@ -24,6 +25,9 @@ private:
     int moveCameraY = 0;
     bool generated = false;
 
+    sf::Texture playerTexture;
+    Player* player;
+
     sf::Texture dirtTexture;
     sf::Sprite dirtSprite;
 
@@ -32,6 +36,9 @@ private:
 
     sf::Texture stoneTexture;
     sf::Sprite stoneSprite;
+
+    sf::Texture emptyTexture;
+    sf::Sprite emptySprite;
 public:
     PlayingState(Game*);
     ~PlayingState();

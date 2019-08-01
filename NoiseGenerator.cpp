@@ -31,7 +31,7 @@ void NoiseGenerator::generatePerlinNoise(int nOctaves)
             int sample1 = (i / nPitch) * nPitch;
             int sample2 = (sample1 + nPitch) % outputSize;
 
-            float fBlend = (float)(i - sample1) / (float)nPitch;
+            float fBlend = static_cast<float>(i - sample1) / static_cast<float>(nPitch);
             float fSample = (1.0f - fBlend) * seed[sample1] + fBlend * seed[sample2];
             noise += fSample * scale;
             scaleAccumulator += scale;
