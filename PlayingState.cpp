@@ -171,66 +171,62 @@ void PlayingState::update()
         }
     }
 
-    // Move player right
+    
     int playerFutureX = player->x + player->moveX;
+	Chunk* collisionChunk = nullptr;
+	for (Chunk* chunk : chunks)
+	{
+		if (chunk->rect.contains(playerFutureX, player->y))
+		{
+			collisionChunk = chunk;
+			break;
+		}
+	}
+			
+	// Move player right
     if (playerFutureX > player->x)
     {
-        for (Chunk* chunk : chunks)
-        {
-            if (chunk->rect.contains(playerFutureX, player->y))
-            {
-                Tile* closestTile = nullptr;
-                for (Tile* tile : chunk->tiles)
-                {
-                    if (tile->y < player->y + PLAYER_HEIGHT && tile->y > player->y
-                        && tile->x >= player->x + PLAYER_WIDTH && tile->x <= playerFutureX + PLAYER_WIDTH)
-                    {
-                        if (closestTile == nullptr)
-                            closestTile = tile;
-                        else if (tile->x < closestTile->x)
-                            closestTile = tile;
-                    }
-                }
-                if (closestTile != nullptr)
-                    playerFutureX = closestTile->x - PLAYER_WIDTH;
-            }
-        }
-    } else
-    { // Move player left
-        for (Chunk* chunk : chunks)
-        {
-            if (chunk->rect.contains(playerFutureX, player->y))
-            {
-                Tile* closestTile = nullptr;
-                for (Tile* tile : chunk->tiles)
-                {
-                    if (tile->y < player->y + PLAYER_HEIGHT && tile->y > player->y
-                        && tile->x + BLOCK_SIZE <= player->x && tile->x >= playerFutureX - BLOCK_SIZE)
-                    {
-                        if (closestTile == nullptr)
-                            closestTile = tile;
-                        else if (tile->x > closestTile->x)
-                            closestTile = tile;
-                    }
-                }
-                if (closestTile != nullptr)
-                    playerFutureX = closestTile->x + BLOCK_SIZE;
-            }
-        }
+		Tile* closestTile = nullptr;
+		for (Tile* tile : collisionChunk->tiles)
+		{
+			if (tile->y < player->y + PLAYER_HEIGHT && tile->y > player->y
+				&& tile->x >= player->x + PLAYER_WIDTH && tile->x <= playerFutureX + PLAYER_WIDTH)
+			{
+				if (closestTile == nullptr)
+					closestTile = tile;
+				else if (tile->x < closestTile->x)
+					closestTile = tile;
+			}
+		}
+		if (closestTile != nullptr)
+			playerFutureX = closestTile->x - PLAYER_WIDTH;
+    } 
+	// Move player left
+	else if (playerFutureX < player->x)
+    { 
+		Tile* closestTile = nullptr;
+		for (Tile* tile : collisionChunk->tiles)
+		{
+			if (tile->y < player->y + PLAYER_HEIGHT && tile->y > player->y
+				&& tile->x + BLOCK_SIZE <= player->x && tile->x >= playerFutureX - BLOCK_SIZE)
+			{
+				if (closestTile == nullptr)
+					closestTile = tile;
+				else if (tile->x > closestTile->x)
+					closestTile = tile;
+			}
+		}
+		if (closestTile != nullptr)
+			playerFutureX = closestTile->x + BLOCK_SIZE;
     }
 
+	// Set new player position
     player->y = playerFutureY;
     player->x = playerFutureX;
 
     // Move camera
-    camera_x = player->x - WINDOW_X / 2;
-    camera_y = player->y - WINDOW_Y / 2;
-    /*
-    if ((camera_x + moveCameraX) < MAP_X - WINDOW_X && (camera_x + moveCameraX) > 0)
-        camera_x += moveCameraX;
-    if ((camera_y + moveCameraY) < MAP_Y - WINDOW_Y  && (camera_y + moveCameraY) > 0)
-        camera_y += moveCameraY;
-    */
+    camera_x = player->x - (WINDOW_X / 2);
+    camera_y = player->y - (WINDOW_Y / 2);
 }
 
 void PlayingState::draw()
@@ -271,8 +267,6 @@ void PlayingState::draw()
                     stoneSprite.setColor(sf::Color(brightness, brightness, brightness));
                     stoneSprite.setPosition(tile->x - camera_x, tile->y - camera_y);
                     game->window.draw(stoneSprite);
-                    break;
-                default:
                     break;
                 }
             }
