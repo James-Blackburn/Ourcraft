@@ -96,20 +96,18 @@ void PlayingState::generateMap()
         }
     }
 
-    for (int y=0; y<MAP_Y; y+=CHUNK_SIZE*BLOCK_SIZE)
+    int y = 0;
+    for (int x=0; x<MAP_X; x+=CHUNK_SIZE*BLOCK_SIZE)
     {
-        for (int x=0; x<MAP_X; x+=CHUNK_SIZE*BLOCK_SIZE)
+        Chunk* newChunk = new Chunk(x, y, CHUNK_SIZE*BLOCK_SIZE, MAP_Y);
+        for (int i=0; i<tiles.size(); i++)
         {
-            Chunk* newChunk = new Chunk(x, y, CHUNK_SIZE*BLOCK_SIZE, CHUNK_SIZE*BLOCK_SIZE);
-            for (int i=0; i<tiles.size(); i++)
+            if (newChunk->rect.contains(tiles[i]->x + BLOCK_SIZE/2, tiles[i]->y + BLOCK_SIZE/2))
             {
-                if (newChunk->rect.contains(tiles[i]->x + BLOCK_SIZE/2, tiles[i]->y + BLOCK_SIZE/2))
-                {
-                    newChunk->tiles.push_back(tiles[i]);
-                }
+                newChunk->tiles.push_back(tiles[i]);
             }
-            chunks.push_back(newChunk);
         }
+        chunks.push_back(newChunk);
     }
     generated = true;
 }
@@ -123,9 +121,11 @@ void PlayingState::update()
             game->window.close();
         else if (event.type == sf::Event::KeyPressed)
         {
-            if (event.key.code == sf::Keyboard::Space)
+            if (event.key.code == sf::Keyboard::Escape)
+                game->window.close();
+            else if (event.key.code == sf::Keyboard::Space)
                 player->moveY = 8;
-            if (event.key.code == sf::Keyboard::Right || event.key.code == sf::Keyboard::D)
+            else if (event.key.code == sf::Keyboard::Right || event.key.code == sf::Keyboard::D)
                 player->moveX = MOVE_SPEED;
             else if (event.key.code == sf::Keyboard::Left || event.key.code == sf::Keyboard::A)
                 player->moveX = -MOVE_SPEED;
@@ -143,9 +143,8 @@ void PlayingState::update()
 
     if (player->moveY)
     {
-        player->y += -player->moveY;
+        playerFutureY = player->y - player->moveY;
         player->moveY--;
-        playerFutureY = player->y;
     }
     else
         playerFutureY = player->y + GRAVITY;
@@ -171,62 +170,70 @@ void PlayingState::update()
         }
     }
 
-    
+    player->y = playerFutureY;
+
+    std::vector<Tile*> collisionTiles;
     int playerFutureX = player->x + player->moveX;
-	Chunk* collisionChunk = nullptr;
-	for (Chunk* chunk : chunks)
-	{
-		if (chunk->rect.contains(playerFutureX, player->y))
-		{
-			collisionChunk = chunk;
-			break;
-		}
-	}
-			
-	// Move player right
-    if (playerFutureX > player->x)
+    sf::IntRect playerFutureRect(playerFutureX, player->y,
+                                PLAYER_WIDTH, PLAYER_HEIGHT);
+    for (Chunk* chunk : chunks)
     {
-		Tile* closestTile = nullptr;
-		for (Tile* tile : collisionChunk->tiles)
-		{
-			if (tile->y < player->y + PLAYER_HEIGHT && tile->y > player->y
-				&& tile->x >= player->x + PLAYER_WIDTH && tile->x <= playerFutureX + PLAYER_WIDTH)
-			{
-				if (closestTile == nullptr)
-					closestTile = tile;
-				else if (tile->x < closestTile->x)
-					closestTile = tile;
-			}
-		}
-		if (closestTile != nullptr)
-			playerFutureX = closestTile->x - PLAYER_WIDTH;
-    } 
-	// Move player left
-	else if (playerFutureX < player->x)
-    { 
-		Tile* closestTile = nullptr;
-		for (Tile* tile : collisionChunk->tiles)
-		{
-			if (tile->y < player->y + PLAYER_HEIGHT && tile->y > player->y
-				&& tile->x + BLOCK_SIZE <= player->x && tile->x >= playerFutureX - BLOCK_SIZE)
-			{
-				if (closestTile == nullptr)
-					closestTile = tile;
-				else if (tile->x > closestTile->x)
-					closestTile = tile;
-			}
-		}
-		if (closestTile != nullptr)
-			playerFutureX = closestTile->x + BLOCK_SIZE;
+        if (chunk->rect.intersects(playerFutureRect))
+        {
+            collisionTiles.reserve(chunk->tiles.size());
+            for (Tile* tile : chunk->tiles)
+            {
+                collisionTiles.emplace_back(tile);
+            }
+        }
     }
 
-	// Set new player position
-    player->y = playerFutureY;
+
+    // Move player right
+    if (playerFutureX > player->x)
+    {
+        Tile* closestTile = nullptr;
+        for (Tile* tile : collisionTiles)
+        {
+            int playerX = player->x + PLAYER_WIDTH;
+            int futurePlayerX = playerFutureX + PLAYER_WIDTH;
+            if (tile->y < player->y + PLAYER_HEIGHT && tile->y > player->y
+                && tile->x >= playerX && tile->x <= futurePlayerX)
+            {
+                if (closestTile == nullptr)
+                    closestTile = tile;
+                else if (tile->x < closestTile->x)
+                    closestTile = tile;
+            }
+        }
+        if (closestTile != nullptr)
+        {
+            playerFutureX = closestTile->x - PLAYER_WIDTH;
+        }
+    }
+    else if (playerFutureX < player->x)
+    { // Move player left
+        Tile* closestTile = nullptr;
+        for (Tile* tile : collisionTiles)
+        {
+            if (tile->y < player->y + PLAYER_HEIGHT && tile->y > player->y
+                && tile->x + BLOCK_SIZE <= player->x && tile->x + BLOCK_SIZE >= playerFutureX)
+            {
+                if (closestTile == nullptr)
+                    closestTile = tile;
+                else if (tile->x > closestTile->x)
+                    closestTile = tile;
+            }
+        }
+        if (closestTile != nullptr)
+            playerFutureX = closestTile->x + BLOCK_SIZE;
+    }
+
     player->x = playerFutureX;
 
     // Move camera
-    camera_x = player->x - (WINDOW_X / 2);
-    camera_y = player->y - (WINDOW_Y / 2);
+    camera_x = player->x - WINDOW_X / 2;
+    camera_y = player->y - WINDOW_Y / 2;
 }
 
 void PlayingState::draw()
@@ -267,6 +274,8 @@ void PlayingState::draw()
                     stoneSprite.setColor(sf::Color(brightness, brightness, brightness));
                     stoneSprite.setPosition(tile->x - camera_x, tile->y - camera_y);
                     game->window.draw(stoneSprite);
+                    break;
+                default:
                     break;
                 }
             }
