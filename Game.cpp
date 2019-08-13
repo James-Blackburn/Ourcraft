@@ -3,7 +3,8 @@
 #include "MenuState.hpp"
 #include "Constants.hpp"
 
-Game::Game() : window(sf::VideoMode(WINDOW_X, WINDOW_Y), "Ourcraft 1.0")
+
+Game::Game() : window(sf::VideoMode(WINDOW_X, WINDOW_Y), "Ourcraft 1.0", sf::Style::Fullscreen)
 {
     window.setFramerateLimit(60);
     window.setVerticalSyncEnabled(true);
@@ -27,6 +28,7 @@ void Game::gameLoop()
 {
     currentState->update();
     currentState->draw();
+
     if (!stateStack.empty())
     {
         delete currentState;

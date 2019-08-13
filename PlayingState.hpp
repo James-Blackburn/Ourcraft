@@ -6,6 +6,7 @@
 
 #include "GameState.hpp"
 #include "Chunk.hpp"
+#include "Sprite.hpp"
 
 #include "Constants.hpp"
 
@@ -25,26 +26,22 @@ private:
     int moveCameraY = 0;
     bool generated = false;
 
-    sf::Texture playerTexture;
     Player* player;
 
-    sf::Texture dirtTexture;
-    sf::Sprite dirtSprite;
+    Sprite dirtSprite;
+    Sprite grassSprite;
+    Sprite stoneSprite;
+    Sprite waterSprite;
+    Sprite sandSprite;
+    Sprite treeWoodSprite;
+    Sprite leafSprite;
+    Sprite emptySprite;
 
-    sf::Texture grassTexture;
-    sf::Sprite grassSprite;
-
-    sf::Texture stoneTexture;
-    sf::Sprite stoneSprite;
-
-    sf::Texture emptyTexture;
-    sf::Sprite emptySprite;
 public:
     PlayingState(Game*);
     ~PlayingState();
     void loadResources();
     void loadMap();
-    void generateMap();
     void update();
     void draw();
 };

@@ -2,8 +2,6 @@
 #include "Game.hpp"
 #include "Text.hpp"
 
-#include <string>
-
 int main()
 {
     Game ourcraft;

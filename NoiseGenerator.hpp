@@ -8,7 +8,7 @@ class NoiseGenerator
 {
 private:
     float* seed = nullptr;
-    int outputSize = MAP_X / BLOCK_SIZE;
+    int outputSize = MAP_BLOCK_WIDTH;
 public:
     float* perlinNoise = nullptr;
 

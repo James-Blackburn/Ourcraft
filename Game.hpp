@@ -3,6 +3,11 @@
 
 #include <stack>
 
+enum GameStates
+{
+    MENU_STATE, PLAYING_STATE
+};
+
 class GameState;
 
 class Game
