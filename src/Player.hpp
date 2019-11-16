@@ -8,7 +8,7 @@
 
 #include "Sprite.hpp"
 
-class Chunk;
+struct Chunk;
 
 enum PlayerState
 {
